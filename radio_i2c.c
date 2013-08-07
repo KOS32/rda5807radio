@@ -33,24 +33,30 @@
 
 unsigned char mode = 0;
 bit showQuality = 0;
+bit isAccessible = 1;
 unsigned char b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12;
 unsigned char encoderOldState;
 unsigned char encoderNewState;
 unsigned char encoderRotation;
 unsigned char softBlend = 26;
 
+void startTimer (void)  {
+    TCNT0=0x6A;  
+    TCCR0B=0x05;
+    isAccessible = 0;
+}
+
 // Timer 0 overflow interrupt service routine
 interrupt [TIM0_OVF] void timer0_ovf_isr(void)
 {
-// Reinitialize Timer 0 value
-TCNT0=0x6A;
-// Place your code here
-
+    TCCR0B=0x00;
+    isAccessible = 1;
 }
 
 // Pin change 0-7 interrupt service routine
 interrupt [PC_INT] void pin_change_isr0(void)
 {
+if (isAccessible == 1)  {
     //read encoder state
     //ecnoderRotation: 1 - left; 2 - right
     encoderOldState = encoderNewState;
@@ -75,7 +81,7 @@ interrupt [PC_INT] void pin_change_isr0(void)
             i2c_write(b9); i2c_write(b10); //06h
             i2c_write(b11); i2c_write(b12); //07h
             i2c_stop();  
-            delay_ms(200);
+            startTimer();
         }
                         
         if (encoderRotation == 1)   {
@@ -88,7 +94,7 @@ interrupt [PC_INT] void pin_change_isr0(void)
             i2c_write(b9); i2c_write(b10); //06h
             i2c_write(b11); i2c_write(b12); //07h
             i2c_stop();  
-            delay_ms(200);
+            startTimer();
             }
     }   
              
@@ -115,9 +121,10 @@ interrupt [PC_INT] void pin_change_isr0(void)
             i2c_write(b9); i2c_write(b10); //06h
             i2c_write(softBlend << 2); i2c_write(b12); //07h
             i2c_stop();  
-            delay_ms(200);           
+            startTimer();          
         }
     }
+}
 }
 
 void DS (unsigned int input)   {
@@ -235,6 +242,7 @@ DDRD=0x03;
 // OC0A output: Disconnected
 // OC0B output: Disconnected
 TCCR0A=0x00;
+TCCR0B=0x00;
 TCNT0=0x6A;
 OCR0A=0x00;
 OCR0B=0x00;
