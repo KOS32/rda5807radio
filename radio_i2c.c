@@ -118,8 +118,9 @@ if (isAccessible == 1)  {
             i2c_write(b3); i2c_write(b4); //03h
             i2c_write(b5); i2c_write(b6); //04h
             i2c_write(b7); i2c_write(b8); //05h
-            i2c_write(b9); i2c_write(b10); //06h
-            i2c_write(softBlend << 2); i2c_write(b12); //07h
+            i2c_write(b9); i2c_write(b10); //06h 
+            b11 = softBlend << 2;
+            i2c_write(b11); i2c_write(b12); //07h
             i2c_stop();  
             startTimer();          
         }
