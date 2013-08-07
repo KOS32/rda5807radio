@@ -31,14 +31,94 @@
 #define dg3 (1<<12)
 #define dg4 (1<<4)
 
-unsigned char delay_time = 5;
 unsigned char mode = 0;
-unsigned char data = 0;
+bit showQuality = 0;
 unsigned char b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12;
 unsigned char encoderOldState;
 unsigned char encoderNewState;
 unsigned char encoderRotation;
 unsigned char softBlend = 26;
+
+// Timer 0 overflow interrupt service routine
+interrupt [TIM0_OVF] void timer0_ovf_isr(void)
+{
+// Reinitialize Timer 0 value
+TCNT0=0x6A;
+// Place your code here
+
+}
+
+// Pin change 0-7 interrupt service routine
+interrupt [PC_INT] void pin_change_isr0(void)
+{
+    //read encoder state
+    //ecnoderRotation: 1 - left; 2 - right
+    encoderOldState = encoderNewState;
+    encoderNewState = 0;
+    encoderNewState |= (PINB.0 << 1);
+    encoderNewState |= PINB.1;
+    encoderRotation = 0; //no rotation       
+    
+    if (encoderOldState == 1)  {
+        if (encoderNewState == 0) encoderRotation = 1; 
+        if (encoderNewState == 3) encoderRotation = 2;
+    } 
+    
+    if (mode == 0)  {              //freq scan up/down
+        if (encoderRotation == 2)    {
+            i2c_start();
+            i2c_write(0x20);
+            i2c_write(0b11000011); i2c_write(b2); //02h   
+            i2c_write(b3); i2c_write(b4); //03h
+            i2c_write(b5); i2c_write(b6); //04h
+            i2c_write(b7); i2c_write(b8); //05h
+            i2c_write(b9); i2c_write(b10); //06h
+            i2c_write(b11); i2c_write(b12); //07h
+            i2c_stop();  
+            delay_ms(200);
+        }
+                        
+        if (encoderRotation == 1)   {
+            i2c_start();
+            i2c_write(0x20);
+            i2c_write(0b11000001); i2c_write(b2); //02h   
+            i2c_write(b3); i2c_write(b4); //03h
+            i2c_write(b5); i2c_write(b6); //04h
+            i2c_write(b7); i2c_write(b8); //05h
+            i2c_write(b9); i2c_write(b10); //06h
+            i2c_write(b11); i2c_write(b12); //07h
+            i2c_stop();  
+            delay_ms(200);
+            }
+    }   
+             
+    if (mode == 1) {               //noise soft blend     
+        if (encoderRotation == 2)   {
+            if (softBlend < 31)
+               softBlend++;
+            else 
+                softBlend = 0;
+        }
+        if (encoderRotation == 1)   {
+            if (softBlend > 0)
+                softBlend--;
+            else 
+                softBlend = 31;
+        }                     
+        if (encoderRotation != 0)  {
+            i2c_start();
+            i2c_write(0x20);
+            i2c_write(b1); i2c_write(b2); //02h   
+            i2c_write(b3); i2c_write(b4); //03h
+            i2c_write(b5); i2c_write(b6); //04h
+            i2c_write(b7); i2c_write(b8); //05h
+            i2c_write(b9); i2c_write(b10); //06h
+            i2c_write(softBlend << 2); i2c_write(b12); //07h
+            i2c_stop();  
+            delay_ms(200);           
+        }
+    }
+}
 
 void DS (unsigned int input)   {
       
@@ -118,7 +198,8 @@ unsigned int writeDigit (char d, char pos)
 
 void main(void)
 {
-// Declare your local variables here
+unsigned char delay_time = 5;
+unsigned char data = 0;
 
 // Crystal Oscillator division factor: 1
 #pragma optsize-
@@ -149,13 +230,12 @@ DDRD=0x03;
 
 // Timer/Counter 0 initialization
 // Clock source: System Clock
-// Clock value: Timer 0 Stopped
+// Clock value: 3,906 kHz
 // Mode: Normal top=0xFF
 // OC0A output: Disconnected
 // OC0B output: Disconnected
 TCCR0A=0x00;
-TCCR0B=0x00;
-TCNT0=0x00;
+TCNT0=0x6A;
 OCR0A=0x00;
 OCR0B=0x00;
 
@@ -185,12 +265,14 @@ OCR1BL=0x00;
 // External Interrupt(s) initialization
 // INT0: Off
 // INT1: Off
-// Interrupt on any change on pins PCINT0-7: Off
-GIMSK=0x00;
+// Interrupt on any change on pins PCINT0-7: On
+GIMSK=0x20;
 MCUCR=0x00;
+PCMSK=0x03;
+EIFR=0x20;
 
 // Timer(s)/Counter(s) Interrupt(s) initialization
-TIMSK=0x00;
+TIMSK=0x02;
 
 // Universal Serial Interface initialization
 // Mode: Disabled
@@ -208,41 +290,44 @@ UCSRB=0x00;
 ACSR=0x80;
 DIDR=0x00;
 
-// I2C Bus initialization
-i2c_init();
-    //02h
-    b1 = 0b11000010;
-    b2 = 0b00000001;
-    //03h
-    b3 = 0b00000000;
-    b4 = 0b00000000;
-    //04h
-    b5 = 0b00000000;
-    b6 = 0b00000000;
-    //05h
-    b7 = 0b10001000;
-    b8 = 0b10001111;
-    //06h
-    b9 = 0b00000000;
-    b10 = 0b00000000;
-    //07h
-    b11 = (softBlend << 2);
-    b12 = 0b00000010;
-  
-      i2c_start();
-      i2c_write(0x20);
-      i2c_write(b1); i2c_write(b2); //02h   
-      i2c_write(0b00110010); i2c_write(0b01010000); //03h
-      i2c_write(b5); i2c_write(b6); //04h
-      i2c_write(b7); i2c_write(b8); //05h
-      i2c_write(b9); i2c_write(b10); //06h
-      i2c_write(b11);i2c_write(b12); //07h	
-      i2c_stop();        
+//02h
+b1 = 0b11000010;
+b2 = 0b00000001;
+//03h
+b3 = 0b00000000;
+b4 = 0b00000000;
+//04h
+b5 = 0b00000000;
+b6 = 0b00000000;
+//05h
+b7 = 0b10001000;
+b8 = 0b10001111;
+//06h
+b9 = 0b00000000;
+b10 = 0b00000000;
+//07h
+b11 = (softBlend << 2);
+b12 = 0b00000010;
 
-    while (1)
-    { 
+// I2C Bus initialization
+i2c_init();  
+i2c_start();
+i2c_write(0x20);
+i2c_write(b1); i2c_write(b2); //02h   
+i2c_write(0b00110010); i2c_write(0b01010000); //03h
+i2c_write(b5); i2c_write(b6); //04h
+i2c_write(b7); i2c_write(b8); //05h
+i2c_write(b9); i2c_write(b10); //06h
+i2c_write(b11);i2c_write(b12); //07h	
+i2c_stop();        
+
+// Global enable interrupts
+#asm("sei")
+
+    while (1) 
+    {         
     
-    if (PINB.0 == 0)   {      
+    if (PIND.6 == 0)   {      
     //Freq reading section            
             //read radio state
             i2c_start();
@@ -322,19 +407,7 @@ i2c_init();
                     mode = 0;
                 delay_ms(500);
              }                  
-             
-             //read encoder state
-             //ecnoderRotation: 1 - left; 2 - right
-             encoderOldState = encoderNewState;
-             encoderNewState = 0;
-             encoderNewState |= (PIND.6 << 1);
-             encoderNewState |= PINB.1;
-             encoderRotation = 0; //no rotation
-             
-             if (encoderOldState == 1)  {
-                if (encoderNewState == 0) encoderRotation = 1; 
-                if (encoderNewState == 3) encoderRotation = 2;
-             }
+              
              
              /*
              //full version, but case 1 is enough                   
@@ -365,62 +438,6 @@ i2c_init();
              }                                   
              */
              
-             if (mode == 0)  {              //freq scan up/down
-                if (encoderRotation == 2)    {
-                    i2c_start();
-                    i2c_write(0x20);
-                    i2c_write(0b11000011); i2c_write(b2); //02h   
-                    i2c_write(b3); i2c_write(b4); //03h
-                    i2c_write(b5); i2c_write(b6); //04h
-                    i2c_write(b7); i2c_write(b8); //05h
-                    i2c_write(b9); i2c_write(b10); //06h
-                    i2c_write(b11); i2c_write(b12); //07h
-                    i2c_stop();  
-                    delay_ms(200);
-                }                
-                if (encoderRotation == 1)   {
-                    i2c_start();
-                    i2c_write(0x20);
-                    i2c_write(0b11000001); i2c_write(b2); //02h   
-                    i2c_write(b3); i2c_write(b4); //03h
-                    i2c_write(b5); i2c_write(b6); //04h
-                    i2c_write(b7); i2c_write(b8); //05h
-                    i2c_write(b9); i2c_write(b10); //06h
-                    i2c_write(b11); i2c_write(b12); //07h
-                    i2c_stop();  
-                    delay_ms(200);
-                }
-             }   
-             
-             if (mode == 1) {               //noise soft blend     
-                if (encoderRotation == 2)   {
-                    if (softBlend < 31)
-                        softBlend++;
-                    else 
-                        softBlend = 0;
-                }
-                if (encoderRotation == 1)   {
-                    if (softBlend > 0)
-                        softBlend--;
-                    else 
-                        softBlend = 31;
-                }                     
-                if (encoderRotation != 0)  {
-                    i2c_start();
-                    i2c_write(0x20);
-                    i2c_write(b1); i2c_write(b2); //02h   
-                    i2c_write(b3); i2c_write(b4); //03h
-                    i2c_write(b5); i2c_write(b6); //04h
-                    i2c_write(b7); i2c_write(b8); //05h
-                    i2c_write(b9); i2c_write(b10); //06h
-                    i2c_write(softBlend << 2); i2c_write(b12); //07h
-                    i2c_stop();  
-                    delay_ms(200);           
-                }
-                
-             }
-             
     } 
                                         
 }
-//github
