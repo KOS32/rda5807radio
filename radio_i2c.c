@@ -31,8 +31,6 @@
 #define dg3 (1<<12)
 #define dg4 (1<<4)
 
-unsigned char temp = 0;
-
 unsigned char mode = 0;
 bit showQuality = 0;
 bit isAccessible = 1;
@@ -76,7 +74,7 @@ unsigned char freq = 0;
             encoderRotation = 0; 
     
     if (mode == 0)  {              //freq scan up/down
-        if (encoderRotation == 2)    {
+        if (encoderRotation == 2)    { 
             i2c_start();
             i2c_write(0x20);
             i2c_write(0b11000011); i2c_write(b2); //02h   
@@ -100,51 +98,8 @@ unsigned char freq = 0;
             i2c_stop();  
             }
     }   
-    
-    if (mode == 1)  {              //manual freq set up/down 
-        if (encoderRotation != 0)   {
-            i2c_start();
-            i2c_write(0x21); //read command
-            i2c_read(1);
-            freq = i2c_read(0);                               
-            i2c_stop();
-        }
-        if (encoderRotation == 2)    {
-            if (freq < 210)
-                freq++;
-            else
-                freq = 0;  
-                
-            i2c_start();
-            i2c_write(0x20);
-            i2c_write(b1); i2c_write(b2); //02h   
-            i2c_write(freq >> 2); i2c_write((freq << 6) | 0b00010000); //03h
-            i2c_write(b5); i2c_write(b6); //04h
-            i2c_write(b7); i2c_write(b8); //05h
-            i2c_write(b9); i2c_write(b10); //06h
-            i2c_write(b11);i2c_write(b12); //07h	
-            i2c_stop(); 
-        }
-        
-        if (encoderRotation == 1)   { 
-            if (freq > 0)
-                freq--;
-            else
-                freq = 210;
-                
-            i2c_start();
-            i2c_write(0x20);
-            i2c_write(b1); i2c_write(b2); //02h   
-            i2c_write(freq >> 2); i2c_write((freq << 6) | 0b00010000); //03h
-            i2c_write(b5); i2c_write(b6); //04h
-            i2c_write(b7); i2c_write(b8); //05h
-            i2c_write(b9); i2c_write(b10); //06h
-            i2c_write(b11);i2c_write(b12); //07h	
-            i2c_stop(); 
-        }
-    }
              
-    if (mode == 2) {               //noise soft blend    
+    if (mode == 1) {               //noise soft blend    
         if (encoderRotation == 2)   {
             if (softBlend < 31)
                softBlend++;
@@ -392,7 +347,7 @@ i2c_stop();
     while (1) 
     {         
     
-    if ( ((mode == 0) && (showQuality == 0)) | (mode == 1))   {      
+    if ((mode == 0) && (showQuality == 0))   {      
     //Freq reading section            
             //read radio state
             i2c_start();
@@ -471,8 +426,7 @@ i2c_stop();
              
              if (PIND.5 == 0)   {           //mode select
              //mode 0 - freq scan up/down
-             //mode 1 - manual freq set up/down
-             //mode 2 - noise blend
+             //mode 1 - noise blend
                 if (mode < 2)
                     mode++; 
                 else
