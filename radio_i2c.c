@@ -31,12 +31,14 @@
 #define dg3 (1<<12)
 #define dg4 (1<<4)
 
+unsigned char temp = 0;
+
 unsigned char mode = 0;
 bit showQuality = 0;
 bit isAccessible = 1;
 unsigned char b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12;
 unsigned char encoderOldState;
-unsigned char encoderNewState;
+volatile unsigned char encoderNewState;
 unsigned char encoderRotation;
 unsigned char softBlend = 26;
 
@@ -54,23 +56,50 @@ interrupt [TIM0_OVF] void timer0_ovf_isr(void)
 }
 
 // Pin change 0-7 interrupt service routine
-interrupt [PC_INT] void pin_change_isr0(void)
+interrupt [TIM1_OVF] void timer1_ovf_isr(void)
 {
+// Reinitialize Timer1 value
+TCNT1H=0xFF;
+TCNT1L=0xF5;
 if (isAccessible == 1)  {
+    
+    temp++;
+
     //read encoder state
     //ecnoderRotation: 1 - left; 2 - right
     encoderOldState = encoderNewState;
     encoderNewState = 0;
     encoderNewState |= (PINB.0 << 1);
     encoderNewState |= PINB.1;
-    encoderRotation = 0; //no rotation       
+    //encoderRotation = 0;    
     
-    if (encoderOldState == 1)  {
-        if (encoderNewState == 0) encoderRotation = 1; 
-        if (encoderNewState == 3) encoderRotation = 2;
-    } 
+     switch (encoderOldState)    {
+        case 0: {
+        if (encoderNewState == 2) encoderRotation++; 
+        if (encoderNewState == 1) encoderRotation--;
+        break;
+        }
+                       
+        case 1: {
+        if (encoderNewState == 0) encoderRotation++; 
+        if (encoderNewState == 3) encoderRotation--;
+        break;
+        }     
+                
+        case 2: {                                           
+        if (encoderNewState == 3) encoderRotation++; 
+        if (encoderNewState == 0) encoderRotation--;
+        break;
+        }
+                
+        case 3: {                                           
+        if (encoderNewState == 1) encoderRotation++; 
+        if (encoderNewState == 2) encoderRotation--;
+        break;
+        }                           
+     }   
     
-    if (mode == 0)  {              //freq scan up/down
+    if (mode == 3)  {              //mode = 0 freq scan up/down
         if (encoderRotation == 2)    {
             i2c_start();
             i2c_write(0x20);
@@ -250,20 +279,20 @@ OCR0B=0x00;
 
 // Timer/Counter 1 initialization
 // Clock source: System Clock
-// Clock value: Timer1 Stopped
+// Clock value: 3,906 kHz
 // Mode: Normal top=0xFFFF
 // OC1A output: Discon.
 // OC1B output: Discon.
 // Noise Canceler: Off
 // Input Capture on Falling Edge
-// Timer1 Overflow Interrupt: Off
+// Timer1 Overflow Interrupt: On
 // Input Capture Interrupt: Off
 // Compare A Match Interrupt: Off
 // Compare B Match Interrupt: Off
 TCCR1A=0x00;
-TCCR1B=0x00;
-TCNT1H=0x00;
-TCNT1L=0x00;
+TCCR1B=0x05;
+TCNT1H=0xFF;
+TCNT1L=0xF5;
 ICR1H=0x00;
 ICR1L=0x00;
 OCR1AH=0x00;
@@ -274,14 +303,12 @@ OCR1BL=0x00;
 // External Interrupt(s) initialization
 // INT0: Off
 // INT1: Off
-// Interrupt on any change on pins PCINT0-7: On
-GIMSK=0x20;
+// Interrupt on any change on pins PCINT0-7: Off
+GIMSK=0x00;
 MCUCR=0x00;
-PCMSK=0x03;
-EIFR=0x20;
 
 // Timer(s)/Counter(s) Interrupt(s) initialization
-TIMSK=0x02;
+TIMSK=0x82;
 
 // Universal Serial Interface initialization
 // Mode: Disabled
@@ -319,6 +346,7 @@ b11 = (softBlend << 2);
 b12 = 0b00000010;
 
 // I2C Bus initialization
+delay_ms(500);
 i2c_init();  
 i2c_start();
 i2c_write(0x20);
@@ -383,7 +411,16 @@ i2c_stop();
             
     //end of frequency reading section    
     }
-    else    {     
+    else    {
+    data = temp; 
+    DS(writeDigit((int)(data/100),2));
+    delay_ms(delay_time); 
+    DS(writeDigit((int)((data%100)/10),3));
+    delay_ms(delay_time);
+    DS(writeDigit((int)(data%10),4));
+    delay_ms(delay_time);
+    
+    /*    
     //Signal quality reading section 
             i2c_start();
             i2c_write(0x21); //read command
@@ -404,7 +441,8 @@ i2c_stop();
             DS(writeDigit((int)(data%10),4));
             delay_ms(delay_time);     
             
-    //end of signal quality reading 
+    //end of signal quality reading
+    */ 
     }
             
              
@@ -415,38 +453,7 @@ i2c_stop();
                 else
                     mode = 0;
                 delay_ms(500);
-             }                  
-              
-             
-             /*
-             //full version, but case 1 is enough                   
-             switch (encoderOldState)    {
-                case 0: {
-                if (encoderNewState == 2) encoderRotation = 1; 
-                if (encoderNewState == 1) encoderRotation = 2;
-                break;
-                }
-                
-                case 2: {                                           
-                if (encoderNewState == 3) encoderRotation = 5; 
-                if (encoderNewState == 0) encoderRotation = 6;
-                break;
-                }
-                
-                case 3: {                                           
-                if (encoderNewState == 1) encoderRotation = 7; 
-                if (encoderNewState == 2) encoderRotation = 8;
-                break;
-                }
-                
-                case 1: {
-                if (encoderNewState == 0) encoderRotation = 3; 
-                if (encoderNewState == 3) encoderRotation = 4;
-                break;
-                }                                
-             }                                   
-             */
-             
+             }                                                             
     } 
                                         
 }
