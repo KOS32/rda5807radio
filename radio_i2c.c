@@ -37,8 +37,7 @@ unsigned char mode = 0;
 bit showQuality = 0;
 bit isAccessible = 1;
 unsigned char b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12;
-unsigned char encoderOldState;
-volatile unsigned char encoderNewState;
+unsigned char encoderState;
 unsigned char encoderRotation;
 unsigned char softBlend = 26;
 
@@ -50,27 +49,32 @@ void startTimer (void)  {
 }
 
 // Timer 0 overflow interrupt service routine
-//10ms delay. Encoder data receiving
+//5ms delay. Encoder data receiving
 interrupt [TIM0_OVF] void timer0_ovf_isr(void)
 {
 // Reinitialize Timer0 value
-TCNT0=0xBE;
+TCNT0=0xD9; //BE
 
 if (isAccessible == 1)  {
-    //read encoder state
-    //ecnoderRotation: 1 - left; 2 - right
-    encoderOldState = encoderNewState;
-    encoderNewState = 0;
-    encoderNewState |= (PINB.0 << 1);
-    encoderNewState |= PINB.1;
-    encoderRotation = 0;    
     
-    if (encoderOldState == 1)   {
-        if (encoderNewState == 0) encoderRotation = 1; 
-        if (encoderNewState == 3) encoderRotation = 2;
-    }   
+    if ( (encoderState & 0x03) != (PINB & 0x03) )   {   //new state != last state
+           encoderState = encoderState << 2;
+           encoderState |= (PINB & 0x03);  
+    }       
     
-    if (mode == 3)  {              //mode = 0 freq scan up/down
+    if (encoderState == 203)    {        
+        encoderRotation = 2;    //turn clockwise
+        encoderState = 3;
+    }
+    else
+        if (encoderState == 227)    {
+            encoderRotation = 1;    //turn counterclockwise
+            encoderState = 3;
+        }
+        else
+            encoderRotation = 0; 
+    
+    if (mode == 0)  {              //freq scan up/down
         if (encoderRotation == 2)    {
             i2c_start();
             i2c_write(0x20);
@@ -81,7 +85,6 @@ if (isAccessible == 1)  {
             i2c_write(b9); i2c_write(b10); //06h
             i2c_write(b11); i2c_write(b12); //07h
             i2c_stop();  
-            startTimer();
         }
                         
         if (encoderRotation == 1)   {
@@ -94,11 +97,19 @@ if (isAccessible == 1)  {
             i2c_write(b9); i2c_write(b10); //06h
             i2c_write(b11); i2c_write(b12); //07h
             i2c_stop();  
-            startTimer();
             }
     }   
+    
+    if (mode == 1)  {              //manual freq set up/down
+        if (encoderRotation == 2)    {
+        }
+        
+        if (encoderRotation == 1)   {
+        
+        }
+    }
              
-    if (mode == 1) {               //noise soft blend     
+    if (mode == 2) {               //noise soft blend    
         if (encoderRotation == 2)   {
             if (softBlend < 31)
                softBlend++;
@@ -121,8 +132,7 @@ if (isAccessible == 1)  {
             i2c_write(b9); i2c_write(b10); //06h 
             b11 = softBlend << 2;
             i2c_write(b11); i2c_write(b12); //07h
-            i2c_stop();  
-            startTimer();          
+            i2c_stop();           
         }
     }
 }
@@ -256,7 +266,7 @@ DDRD=0x03;
 // OC0B output: Disconnected
 TCCR0A=0x00;
 TCCR0B=0x05;
-TCNT0=0xBE;
+TCNT0=0xD9;
 OCR0A=0x00;
 OCR0B=0x00;
 
@@ -347,7 +357,7 @@ i2c_stop();
     while (1) 
     {         
     
-    if (PIND.6 == 0)   {      
+    if ( ((mode == 0) && (showQuality == 0)) | (mode == 1))   {      
     //Freq reading section            
             //read radio state
             i2c_start();
@@ -395,26 +405,22 @@ i2c_stop();
     //end of frequency reading section    
     }
     else    { 
-    DS(writeDigit(encoderRotation,2));
-    delay_ms(delay_time); 
-    DS(writeDigit(encoderOldState,3));
-    delay_ms(delay_time);
-    DS(writeDigit(encoderNewState,4));
-    delay_ms(delay_time);
-    
-    /*    
-    //Signal quality reading section 
-            i2c_start();
-            i2c_write(0x21); //read command
-            i2c_read(1);
-            i2c_read(1);
-            data = i2c_read(1);             
-            i2c_stop();        
-            data = data >> 1;  
-            
-            if (mode == 1)  {
+       
+    //data reading section
+            if (mode == 2)  {
                 data = softBlend;
-            }        
+            }
+            if (mode == 0)  {
+                //signal quality 
+                i2c_start();
+                i2c_write(0x21); //read command
+                i2c_read(1);
+                i2c_read(1);
+                data = i2c_read(1);             
+                i2c_stop();        
+                data = data >> 1;
+            }  
+                    
             //only 2 digits needed
             //DS(writeDigit((int)(data/100),2));
             //delay_ms(delay_time); 
@@ -423,19 +429,27 @@ i2c_stop();
             DS(writeDigit((int)(data%10),4));
             delay_ms(delay_time);     
             
-    //end of signal quality reading
-    */ 
+    //end of data reading section
+
     }
-            
+        if (isAccessible == 1)  {        
              
-             if (PIND.5 == 0)           //mode select
-             {
-                if (mode < 1)   //2 modes
+             if (PIND.5 == 0)   {           //mode select
+             //mode 0 - freq scan up/down
+             //mode 1 - manual freq set up/down
+             //mode 2 - noise blend
+                if (mode < 2)
                     mode++; 
                 else
                     mode = 0;
-                delay_ms(500);
-             }                                                             
+                startTimer();
+             }  
+             
+             if (PIND.6 == 0)   {           //freq or quality to display
+                showQuality = !showQuality;
+                startTimer();
+            } 
+        }
     } 
                                         
 }
