@@ -38,10 +38,11 @@ unsigned char b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12;
 unsigned char encoderState;
 unsigned char encoderRotation;
 unsigned char softBlend = 26;
+unsigned char additionalSettings = 0;
 
 void startTimer (void)  {
-    TCNT1H=0xFC;
-    TCNT1L=0xF2; 
+    TCNT1H=0xF8;
+    TCNT1L=0x5E; 
     TCCR1B=0x05;
     isAccessible = 0;
 }
@@ -133,9 +134,6 @@ interrupt [TIM1_OVF] void timer1_ovf_isr(void)
 {
     //stop timer  
     TCCR1B=0x00;
-    // Reinitialize Timer1 value
-    TCNT1H=0xFC;
-    TCNT1L=0xF2;
     isAccessible = 1;
 }
 
@@ -273,8 +271,8 @@ OCR0B=0x00;
 // Compare B Match Interrupt: Off
 TCCR1A=0x00;
 TCCR1B=0x00;
-TCNT1H=0xFC;
-TCNT1L=0xF2;
+TCNT1H=0xF8;
+TCNT1L=0x5E;
 ICR1H=0x00;
 ICR1L=0x00;
 OCR1AH=0x00;
@@ -396,9 +394,6 @@ i2c_stop();
     else    { 
        
     //data reading section
-            if (mode == 2)  {
-                data = softBlend;
-            }
             if (mode == 0)  {
                 //signal quality 
                 i2c_start();
@@ -408,11 +403,16 @@ i2c_stop();
                 data = i2c_read(1);             
                 i2c_stop();        
                 data = data >> 1;
-            }  
+            }             
+            if (mode == 1)  {
+                data = softBlend;
+            }
+            if (mode == 2)  {
+                data = additionalSettings;
+            }
                     
-            //only 2 digits needed
-            //DS(writeDigit((int)(data/100),2));
-            //delay_ms(delay_time); 
+            DS(writeDigit((int)(data/100),2));
+            delay_ms(delay_time); 
             DS(writeDigit((int)((data%100)/10),3));
             delay_ms(delay_time);
             DS(writeDigit((int)(data%10),4));
@@ -427,8 +427,10 @@ i2c_stop();
              //mode 0 - freq scan up/down
              //mode 1 - noise blend
              //mode 2 - some additional parameters
-                if (mode < 2)
-                    mode++; 
+                if (mode < 2)   {
+                    mode++;
+                    showQuality = 0;      
+                }
                 else
                     mode = 0;
                 startTimer();
