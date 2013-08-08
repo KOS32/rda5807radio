@@ -189,7 +189,8 @@ unsigned int writeDigit (char d, char pos)
        case 0:
         toDisplay |= (segA | segB | segC | segD | segE | segF);
         break;        
-       default: 
+       default:
+        break; 
     }; 
 
        switch (pos) {
@@ -200,14 +201,15 @@ unsigned int writeDigit (char d, char pos)
         toDisplay &= ~dg2;
         break;
        case 3 :           
-        toDisplay |= DP;        //dispaly dot?
+        toDisplay |= DP;        //dot visibility
         toDisplay &= ~dg3;
         break;
        case 4 :
         toDisplay &= ~dg4;
         break;                 
        break;
-       default: 
+       default:  
+        break;
     };  
     
     return toDisplay;
@@ -305,6 +307,8 @@ UCSRB=0x00;
 // Analog Comparator Input Capture by Timer/Counter 1: Off
 ACSR=0x80;
 DIDR=0x00;
+ 
+DS(writeDigit(99,4)); //clear display
 
 //02h
 b1 = 0b11000010;
@@ -326,17 +330,17 @@ b11 = (softBlend << 2);
 b12 = 0b00000010;
 
 // I2C Bus initialization
-delay_ms(500);
+delay_ms(1500);
 i2c_init();  
 i2c_start();
 i2c_write(0x20);
 i2c_write(b1); i2c_write(b2); //02h   
-i2c_write(0b00110010); i2c_write(0b01010000); //03h
+i2c_write(0b00110010); i2c_write(0b01010000); //03h   107.1 MHz
 i2c_write(b5); i2c_write(b6); //04h
 i2c_write(b7); i2c_write(b8); //05h
 i2c_write(b9); i2c_write(b10); //06h
 i2c_write(b11);i2c_write(b12); //07h	
-i2c_stop();        
+i2c_stop();     
 
 // Global enable interrupts
 #asm("sei")
