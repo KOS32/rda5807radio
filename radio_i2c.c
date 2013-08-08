@@ -54,7 +54,6 @@ interrupt [TIM0_OVF] void timer0_ovf_isr(void)
 TCNT0=0xD9; //BE
 
 if (isAccessible == 1)  {
-unsigned char freq = 0;
     
     if ( (encoderState & 0x03) != (PINB & 0x03) )   {   //new state != last state
            encoderState = encoderState << 2;
@@ -424,9 +423,10 @@ i2c_stop();
     }
         if (isAccessible == 1)  {        
              
-             if (PIND.5 == 0)   {           //mode select
+             if (PIND.5 == 0)   {              //mode select
              //mode 0 - freq scan up/down
              //mode 1 - noise blend
+             //mode 2 - some additional parameters
                 if (mode < 2)
                     mode++; 
                 else
@@ -434,7 +434,7 @@ i2c_stop();
                 startTimer();
              }  
              
-             if (PIND.6 == 0)   {           //freq or quality to display
+             if (PIND.6 == 0 && mode == 0)   { //freq or quality to display
                 showQuality = !showQuality;
                 startTimer();
             } 
