@@ -43,28 +43,20 @@ unsigned char encoderRotation;
 unsigned char softBlend = 26;
 
 void startTimer (void)  {
-    TCNT0=0x6A;  
-    TCCR0B=0x05;
+    TCNT1H=0xFC;
+    TCNT1L=0xF2; 
+    TCCR1B=0x05;
     isAccessible = 0;
 }
 
 // Timer 0 overflow interrupt service routine
+//10ms delay. Encoder data receiving
 interrupt [TIM0_OVF] void timer0_ovf_isr(void)
 {
-    TCCR0B=0x00;
-    isAccessible = 1;
-}
+// Reinitialize Timer0 value
+TCNT0=0xBE;
 
-// Pin change 0-7 interrupt service routine
-interrupt [TIM1_OVF] void timer1_ovf_isr(void)
-{
-// Reinitialize Timer1 value
-TCNT1H=0xFF;
-TCNT1L=0xF5;
 if (isAccessible == 1)  {
-    
-    temp++;
-
     //read encoder state
     //ecnoderRotation: 1 - left; 2 - right
     encoderOldState = encoderNewState;
@@ -75,26 +67,26 @@ if (isAccessible == 1)  {
     
      switch (encoderOldState)    {
         case 0: {
-        if (encoderNewState == 2) encoderRotation++; 
-        if (encoderNewState == 1) encoderRotation--;
+        if (encoderNewState == 2) encoderRotation = 1; 
+        if (encoderNewState == 1) encoderRotation = 2;
         break;
         }
                        
         case 1: {
-        if (encoderNewState == 0) encoderRotation++; 
-        if (encoderNewState == 3) encoderRotation--;
+        if (encoderNewState == 0) encoderRotation = 3; 
+        if (encoderNewState == 3) encoderRotation = 4;
         break;
         }     
                 
         case 2: {                                           
-        if (encoderNewState == 3) encoderRotation++; 
-        if (encoderNewState == 0) encoderRotation--;
+        if (encoderNewState == 3) encoderRotation = 5; 
+        if (encoderNewState == 0) encoderRotation = 6;
         break;
         }
                 
         case 3: {                                           
-        if (encoderNewState == 1) encoderRotation++; 
-        if (encoderNewState == 2) encoderRotation--;
+        if (encoderNewState == 1) encoderRotation = 7; 
+        if (encoderNewState == 2) encoderRotation = 8;
         break;
         }                           
      }   
@@ -155,6 +147,18 @@ if (isAccessible == 1)  {
         }
     }
 }
+}
+
+// Timer 1 overflow interrupt service routine
+//100ms delay
+interrupt [TIM1_OVF] void timer1_ovf_isr(void)
+{
+    //stop timer  
+    TCCR1B=0x00;
+    // Reinitialize Timer1 value
+    TCNT1H=0xFC;
+    TCNT1L=0xF2;
+    isAccessible = 1;
 }
 
 void DS (unsigned int input)   {
@@ -272,8 +276,8 @@ DDRD=0x03;
 // OC0A output: Disconnected
 // OC0B output: Disconnected
 TCCR0A=0x00;
-TCCR0B=0x00;
-TCNT0=0x6A;
+TCCR0B=0x05;
+TCNT0=0xBE;
 OCR0A=0x00;
 OCR0B=0x00;
 
@@ -290,9 +294,9 @@ OCR0B=0x00;
 // Compare A Match Interrupt: Off
 // Compare B Match Interrupt: Off
 TCCR1A=0x00;
-TCCR1B=0x05;
-TCNT1H=0xFF;
-TCNT1L=0xF5;
+TCCR1B=0x00;
+TCNT1H=0xFC;
+TCNT1L=0xF2;
 ICR1H=0x00;
 ICR1L=0x00;
 OCR1AH=0x00;
@@ -411,13 +415,12 @@ i2c_stop();
             
     //end of frequency reading section    
     }
-    else    {
-    data = temp; 
-    DS(writeDigit((int)(data/100),2));
+    else    { 
+    DS(writeDigit(encoderRotation,2));
     delay_ms(delay_time); 
-    DS(writeDigit((int)((data%100)/10),3));
+    DS(writeDigit(encoderOldState,3));
     delay_ms(delay_time);
-    DS(writeDigit((int)(data%10),4));
+    DS(writeDigit(encoderNewState,4));
     delay_ms(delay_time);
     
     /*    
