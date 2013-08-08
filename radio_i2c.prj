@@ -116,7 +116,7 @@ WarningUnknownPragma=1
 LinkerWarnings=1
 DebugBootLoader=0
 WatchAVR8LAutoVariables=0
-Build=232
+Build=233
 UseEEPROMLocation0=1
 [Assembler]
 OutputFormat=1
@@ -217,6 +217,11 @@ BK6=-1
 BK7=-1
 BK8=-1
 BK9=-1
+[FoldedCode1]
+Line1=153
+Line2=170
+Line3=360
+Blocks=3
 [HeadersList]
 Files=1
 F1=C:\Documents and Settings\KOS32\Мои документы\GitHub\rda5807radio\radio_i2c.c
@@ -226,8 +231,3 @@ F1=C:\cvavr\inc\tiny2313a.h
 F2=C:\cvavr\inc\tiny4313_bits.h
 F3=C:\cvavr\inc\i2c.h
 F4=C:\cvavr\inc\delay.h
-[FoldedCode1]
-Line1=153
-Line2=170
-Line3=360
-Blocks=3

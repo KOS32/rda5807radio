@@ -56,6 +56,7 @@ interrupt [TIM0_OVF] void timer0_ovf_isr(void)
 TCNT0=0xD9; //BE
 
 if (isAccessible == 1)  {
+unsigned char freq = 0;
     
     if ( (encoderState & 0x03) != (PINB & 0x03) )   {   //new state != last state
            encoderState = encoderState << 2;
@@ -100,12 +101,46 @@ if (isAccessible == 1)  {
             }
     }   
     
-    if (mode == 1)  {              //manual freq set up/down
+    if (mode == 1)  {              //manual freq set up/down 
+        if (encoderRotation != 0)   {
+            i2c_start();
+            i2c_write(0x21); //read command
+            i2c_read(1);
+            freq = i2c_read(0);                               
+            i2c_stop();
+        }
         if (encoderRotation == 2)    {
+            if (freq < 210)
+                freq++;
+            else
+                freq = 0;  
+                
+            i2c_start();
+            i2c_write(0x20);
+            i2c_write(b1); i2c_write(b2); //02h   
+            i2c_write(freq >> 2); i2c_write((freq << 6) | 0b00010000); //03h
+            i2c_write(b5); i2c_write(b6); //04h
+            i2c_write(b7); i2c_write(b8); //05h
+            i2c_write(b9); i2c_write(b10); //06h
+            i2c_write(b11);i2c_write(b12); //07h	
+            i2c_stop(); 
         }
         
-        if (encoderRotation == 1)   {
-        
+        if (encoderRotation == 1)   { 
+            if (freq > 0)
+                freq--;
+            else
+                freq = 210;
+                
+            i2c_start();
+            i2c_write(0x20);
+            i2c_write(b1); i2c_write(b2); //02h   
+            i2c_write(freq >> 2); i2c_write((freq << 6) | 0b00010000); //03h
+            i2c_write(b5); i2c_write(b6); //04h
+            i2c_write(b7); i2c_write(b8); //05h
+            i2c_write(b9); i2c_write(b10); //06h
+            i2c_write(b11);i2c_write(b12); //07h	
+            i2c_stop(); 
         }
     }
              
