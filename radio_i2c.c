@@ -63,33 +63,12 @@ if (isAccessible == 1)  {
     encoderNewState = 0;
     encoderNewState |= (PINB.0 << 1);
     encoderNewState |= PINB.1;
-    //encoderRotation = 0;    
+    encoderRotation = 0;    
     
-     switch (encoderOldState)    {
-        case 0: {
-        if (encoderNewState == 2) encoderRotation = 1; 
-        if (encoderNewState == 1) encoderRotation = 2;
-        break;
-        }
-                       
-        case 1: {
-        if (encoderNewState == 0) encoderRotation = 3; 
-        if (encoderNewState == 3) encoderRotation = 4;
-        break;
-        }     
-                
-        case 2: {                                           
-        if (encoderNewState == 3) encoderRotation = 5; 
-        if (encoderNewState == 0) encoderRotation = 6;
-        break;
-        }
-                
-        case 3: {                                           
-        if (encoderNewState == 1) encoderRotation = 7; 
-        if (encoderNewState == 2) encoderRotation = 8;
-        break;
-        }                           
-     }   
+    if (encoderOldState == 1)   {
+        if (encoderNewState == 0) encoderRotation = 1; 
+        if (encoderNewState == 3) encoderRotation = 2;
+    }   
     
     if (mode == 3)  {              //mode = 0 freq scan up/down
         if (encoderRotation == 2)    {
