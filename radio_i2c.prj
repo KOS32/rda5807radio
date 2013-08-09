@@ -22,7 +22,7 @@ Active0=0
 EditorPanel0=0
 PageIndex0=0
 EditorPanel1=0
-TimeStamp1=1124643662
+TimeStamp1=1124664303
 PageIndex1=1
 TimeStamp0=1124442706
 [Compiler]
@@ -116,7 +116,7 @@ WarningUnknownPragma=1
 LinkerWarnings=1
 DebugBootLoader=0
 WatchAVR8LAutoVariables=0
-Build=256
+Build=264
 UseEEPROMLocation0=1
 [Assembler]
 OutputFormat=1
@@ -197,16 +197,16 @@ Row=0
 Column=0
 ScrollPosX=0
 ScrollPosY=0
-TimeStamp=1124643872
+TimeStamp=1124666158
 [BookmarksFoldedCode]
 Files=1
 F1=radio_i2c.c
 [Bookmarks1]
-TimeStamp=1124643662
-Row=291
-Column=52
+TimeStamp=1124664632
+Row=332
+Column=11
 ScrollPosX=0
-ScrollPosY=81
+ScrollPosY=319
 BK0=-1
 BK1=-1
 BK2=-1
@@ -218,10 +218,7 @@ BK7=-1
 BK8=-1
 BK9=-1
 [FoldedCode1]
-Line1=153
-Line2=170
-Line3=360
-Blocks=3
+Blocks=0
 [HeadersList]
 Files=1
 F1=C:\Documents and Settings\KOS32\Мои документы\GitHub\rda5807radio\radio_i2c.c

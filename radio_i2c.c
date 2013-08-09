@@ -32,13 +32,13 @@
 #define dg4 (1<<4)
 
 unsigned char mode = 0;
+unsigned char parameterToChange = 0; //while mode = 2
 bit showQuality = 0;
 bit isAccessible = 1;
 unsigned char b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12;
 unsigned char encoderState;
 unsigned char encoderRotation;
 unsigned char softBlend = 26;
-unsigned char additionalSettings = 0;
 
 void startTimer (void)  {
     TCNT1H=0xF8;
@@ -121,6 +121,45 @@ if (isAccessible == 1)  {
             i2c_write(b7); i2c_write(b8); //05h
             i2c_write(b9); i2c_write(b10); //06h 
             b11 = softBlend << 2;
+            i2c_write(b11); i2c_write(b12); //07h
+            i2c_stop();           
+        }
+    }
+    
+    if (mode == 2)  {               //additional parameters
+    //parameterToChange:
+    //0 - bass boost
+    //1 - RCLK supply
+    //2 - RCLK direct input
+    //3 - new demodulation method
+            
+        if (encoderRotation != 0)  {
+        
+            encoderRotation--;          //0 and 1
+            switch (parameterToChange) {
+                case 0:
+                b1 = ((encoderRotation << 4)) | (b1 & 0b11101111); 
+                break;                                            
+                case 1:                                           
+                b1 = ((encoderRotation << 3)) | (b1 & 0b11110111);
+                break;
+                case 2:                                           
+                b1 = ((encoderRotation << 2)) | (b1 & 0b11111011);
+                break;
+                case 3:
+                b2 = ((encoderRotation << 2)) | (b2 & 0b11111011);
+                break;
+                default:
+                break;
+            };
+        
+            i2c_start();
+            i2c_write(0x20);
+            i2c_write(b1); i2c_write(b2); //02h   
+            i2c_write(b3); i2c_write(b4); //03h
+            i2c_write(b5); i2c_write(b6); //04h
+            i2c_write(b7); i2c_write(b8); //05h
+            i2c_write(b9); i2c_write(b10); //06h 
             i2c_write(b11); i2c_write(b12); //07h
             i2c_stop();           
         }
@@ -412,7 +451,7 @@ i2c_stop();
                 data = softBlend;
             }
             if (mode == 2)  {
-                data = additionalSettings;
+                data = parameterToChange;
             }
                     
             DS(writeDigit((int)(data/100),2));
@@ -440,9 +479,19 @@ i2c_stop();
                 startTimer();
              }  
              
-             if (PIND.6 == 0 && mode == 0)   { //freq or quality to display
-                showQuality = !showQuality;
-                startTimer();
+            if (PIND.6 == 0)   { 
+                if (mode == 0)  {                   //freq or quality to display
+                    showQuality = !showQuality;      
+                    startTimer();
+                }
+                
+                if (mode == 2)  {                   //parameter to change
+                    if (parameterToChange < 3)
+                        parameterToChange++;
+                    else
+                        parameterToChange = 0;
+                    startTimer();
+                }
             } 
         }
     } 
