@@ -75,9 +75,10 @@ if (isAccessible == 1)  {
     
     if (mode == 0)  {              //freq scan up/down
         if (encoderRotation == 2)    { 
+            b1 |= 0b00000011;         
             i2c_start();
             i2c_write(0x20);
-            i2c_write(0b11000011); i2c_write(b2); //02h   
+            i2c_write(b1); i2c_write(b2); //02h   
             i2c_write(b3); i2c_write(b4); //03h
             i2c_write(b5); i2c_write(b6); //04h
             i2c_write(b7); i2c_write(b8); //05h
@@ -86,10 +87,12 @@ if (isAccessible == 1)  {
             i2c_stop();  
         }
                         
-        if (encoderRotation == 1)   {
+        if (encoderRotation == 1)   { 
+            b1 |= 0b00000001;
+            b1 &= 0b11111101;
             i2c_start();
             i2c_write(0x20);
-            i2c_write(0b11000001); i2c_write(b2); //02h   
+            i2c_write(b1); i2c_write(b2); //02h   
             i2c_write(b3); i2c_write(b4); //03h
             i2c_write(b5); i2c_write(b6); //04h
             i2c_write(b7); i2c_write(b8); //05h
@@ -112,7 +115,8 @@ if (isAccessible == 1)  {
             else 
                 softBlend = 31;
         }                     
-        if (encoderRotation != 0)  {
+        if (encoderRotation != 0)  {             
+            b11 = softBlend << 2;
             i2c_start();
             i2c_write(0x20);
             i2c_write(b1); i2c_write(b2); //02h   
@@ -120,7 +124,6 @@ if (isAccessible == 1)  {
             i2c_write(b5); i2c_write(b6); //04h
             i2c_write(b7); i2c_write(b8); //05h
             i2c_write(b9); i2c_write(b10); //06h 
-            b11 = softBlend << 2;
             i2c_write(b11); i2c_write(b12); //07h
             i2c_stop();           
         }
@@ -135,7 +138,7 @@ if (isAccessible == 1)  {
             
         if (encoderRotation != 0)  {
         
-            encoderRotation--;          //0 and 1
+            encoderRotation--;          //-> 0 and 1
             switch (parameterToChange) {
                 case 0:
                 b1 = ((encoderRotation << 4)) | (b1 & 0b11101111); 
