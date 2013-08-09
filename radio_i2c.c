@@ -40,7 +40,7 @@ unsigned char encoderState;
 unsigned char encoderRotation;
 unsigned char softBlend = 26;
 
-void startTimer (void)  {
+void startTimer (void)  {       //to prevent multiple response while pressing button
     TCNT1H=0xF8;
     TCNT1L=0x5E; 
     TCCR1B=0x05;
@@ -75,10 +75,9 @@ if (isAccessible == 1)  {
     
     if (mode == 0)  {              //freq scan up/down
         if (encoderRotation == 2)    { 
-            b1 |= 0b00000011;         
             i2c_start();
             i2c_write(0x20);
-            i2c_write(b1); i2c_write(b2); //02h   
+            i2c_write(b1 | 0b00000011); i2c_write(b2); //02h   
             i2c_write(b3); i2c_write(b4); //03h
             i2c_write(b5); i2c_write(b6); //04h
             i2c_write(b7); i2c_write(b8); //05h
@@ -88,11 +87,9 @@ if (isAccessible == 1)  {
         }
                         
         if (encoderRotation == 1)   { 
-            b1 |= 0b00000001;
-            b1 &= 0b11111101;
             i2c_start();
             i2c_write(0x20);
-            i2c_write(b1); i2c_write(b2); //02h   
+            i2c_write((b1 | 0b00000001) & 0b11111101); i2c_write(b2); //02h   
             i2c_write(b3); i2c_write(b4); //03h
             i2c_write(b5); i2c_write(b6); //04h
             i2c_write(b7); i2c_write(b8); //05h
@@ -129,7 +126,7 @@ if (isAccessible == 1)  {
         }
     }
     
-    if (mode == 2)  {               //additional parameters
+    if (mode == 2)  {               //set additional parameters
     //parameterToChange:
     //0 - bass boost
     //1 - RCLK supply
@@ -138,7 +135,7 @@ if (isAccessible == 1)  {
             
         if (encoderRotation != 0)  {
         
-            encoderRotation--;          //-> 0 and 1
+            encoderRotation--;          //-> 0 or 1
             switch (parameterToChange) {
                 case 0:
                 b1 = ((encoderRotation << 4)) | (b1 & 0b11101111); 
